@@ -9,7 +9,14 @@
   outputs = { self, nixpkgs }:
     let
       systems = [ "x86_64-linux" ];
-      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      # A flake's `packages` output bakes in THIS flake's nixpkgs config, so the
+      # consumer's allowUnfree never reaches it. helium is an unfree binary-vendor
+      # AppImage and is the whole point of this repo, so allow ONLY helium here —
+      # the output then builds with no allowUnfree required from the consumer.
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f (import nixpkgs {
+        inherit system;
+        config.allowUnfreePredicate = pkg: builtins.elem (nixpkgs.lib.getName pkg) [ "helium" ];
+      }));
     in
     {
       packages = forAllSystems (pkgs: rec {
