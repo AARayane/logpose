@@ -1,0 +1,47 @@
+name: update-helium
+
+# Keep this flake's helium pin current with imputnet's latest release, unattended.
+# Runs daily; also on-demand. Bumps version+hash, VALIDATES the build, then commits.
+# A broken bump fails the build step and is never pushed — the consumer keeps the
+# last-good version.
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-helium
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Bump helium pin to latest release
+        id: bump
+        run: bash ./update-helium.sh .
+
+      - name: Validate the flake still builds
+        run: nix build .#helium --no-link --print-build-logs
+
+      - name: Commit & push if changed
+        run: |
+          if git diff --quiet -- helium.nix; then
+            echo "no change — already latest"
+            exit 0
+          fi
+          ver=$(sed -nE 's/^[[:space:]]*version = "([^"]+)";.*/\1/p' helium.nix | head -1)
+          git config user.name  "helium-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "helium: auto-bump to ${ver}"
+          git push
