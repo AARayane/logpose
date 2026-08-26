@@ -9,12 +9,16 @@
 # this flake's main tracks upstream on its own. A consumer then just bumps the
 # `logpose` input like any other (`nix flake update logpose`) — no special-casing.
 #
-# NOTE — no ExtensionInstallForcelist here: helium is ungoogled-chromium based,
-# which DELIBERATELY ignores that policy (ungoogled-software/ungoogled-chromium
-# #2523), so a managed-policy bind is a silent no-op. Declarative force-install
-# needs --load-extension / external_crx; the CONSUMER passes those via
-# `commandLineArgs` (e.g. sunny's sandboxed-apps.nix does `.override`).
-{ lib, appimageTools, fetchurl, stdenv, commandLineArgs ? "" }:
+# EXTENSIONS — helium is ungoogled-chromium based and IGNORES ExtensionInstallForcelist
+# (proven: 0 installed even with the policy visible + network). It does honour LOCAL
+# External Extension Descriptors, so `extensions = [ { id; hash; prodversion?; } … ]`
+# force-installs each as a DURABLE EXTERNAL_PREF extension: we fetch the signed Web-Store
+# CRX (pinned by hash), read its manifest version, and drop an <id>.json descriptor into
+# helium's FHS extensions dir. No key-injection, no --load-extension. (Caveat: some
+# extensions still re-open an onboarding tab every launch — a helium-level quirk, not the
+# install mechanism; see the consumer's docs/helium-extension-welcome-loop.md.)
+{ lib, appimageTools, fetchurl, stdenv, runCommand, python3, commandLineArgs ? ""
+, extensions ? [ ] }:
 
 let
   pname = "helium";
@@ -34,9 +38,41 @@ let
   };
 
   appimageContents = appimageTools.extractType2 { inherit pname version src; };
+
+  # Signed Web-Store CRX for one extension (pinned by hash). The CRX carries the real
+  # signing key, so chromium derives the true extension ID from it — no key injection.
+  # NordVPN & friends whose minimum_chrome_version > 120 need `prodversion` bumped, else
+  # the Web Store serves an EMPTY CRX (looks "delisted").
+  crxOf = e: fetchurl {
+    url = "https://clients2.google.com/service/update2/crx?response=redirect"
+      + "&acceptformat=crx2,crx3&prodversion=${e.prodversion or "120.0.0.0"}"
+      + "&x=id%3D${e.id}%26installsource%3Dondemand%26uc";
+    hash = e.hash;
+    name = "${e.id}.crx";
+  };
+
+  # External Extension Descriptors → chromium auto-installs each as a DURABLE
+  # EXTERNAL_PREF extension (installed once, kept across launches — not re-loaded like
+  # --load-extension). Dropped into BOTH product paths (helium scans its own + the
+  # chromium one). external_version is read from the CRX so it always matches.
+  descriptors = runCommand "helium-ext-descriptors" { nativeBuildInputs = [ python3 ]; } (''
+    mkdir -p $out/share/helium/extensions $out/share/chromium/extensions
+  '' + lib.concatMapStringsSep "\n" (e:
+    let crx = crxOf e; in ''
+      ver=$(python3 ${./crx-version.py} ${crx})
+      for d in helium chromium; do
+        cp ${crx} $out/share/$d/extensions/${e.id}.crx
+        printf '{"external_crx":"/usr/share/%s/extensions/%s.crx","external_version":"%s"}\n' \
+          "$d" "${e.id}" "$ver" > $out/share/$d/extensions/${e.id}.json
+      done
+    '') extensions);
 in
 appimageTools.wrapType2 {
   inherit pname version src;
+
+  # Bake the External Extension Descriptors into the FHS (/usr/share/{helium,chromium}/
+  # extensions). Only when extensions are declared, so the base package stays clean.
+  extraPkgs = p: lib.optional (extensions != [ ]) descriptors;
 
   extraInstallCommands = ''
     # Bake the runtime flags (Wayland ozone) ONTO THE BINARY, not
