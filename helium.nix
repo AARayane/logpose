@@ -22,14 +22,14 @@
 
 let
   pname = "helium";
-  version = "0.16.3.1";
+  version = "0.16.4.1";
 
   arch = {
     "x86_64-linux" = "x86_64";
   }.${stdenv.hostPlatform.system} or (throw "helium: unsupported system ${stdenv.hostPlatform.system}");
 
   hash = {
-    "x86_64-linux" = "sha256-k3CjrF45s7SizRof/X9eOnPKwkOB9c1AvBSmjj7ROIM=";
+    "x86_64-linux" = "sha256-z0OoKmW49F/2F3mxjZlyJsTY45keyZJAj4pjoGBjBO8=";
   }.${stdenv.hostPlatform.system};
 
   src = fetchurl {
