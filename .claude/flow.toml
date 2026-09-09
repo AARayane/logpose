@@ -1,0 +1,10 @@
+# logpose feature-flow config. logpose is a RELEASED public flake — consumers bump the
+# `logpose` input like any other — so it opts into the release capability: keep a user-facing
+# CHANGELOG + a version for those consumers.
+[release]
+changelog  = "CHANGELOG.md"
+versioning = "auto"          # no existing scheme (greenfield) → enforce semver from `initial`
+initial    = "0.1.0"
+scope      = "user-visible"  # versions logpose's OWN flake/override API; each release NOTES the
+                             # bundled Helium version. Routine daily Helium auto-pins by CI don't
+                             # go through the release skill, so they don't add changelog noise.
