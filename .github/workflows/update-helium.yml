@@ -1,12 +1,8 @@
 name: update-helium
 
-# Keep this flake's helium pin current with imputnet's latest release, unattended.
-# Runs daily; also on-demand. Bumps version+hash, VALIDATES the build, then commits.
-# A broken bump fails the build step and is never pushed — the consumer keeps the
-# last-good version.
 on:
   schedule:
-    - cron: "0 6 * * *"   # 06:00 UTC daily
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 permissions:

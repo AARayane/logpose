@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
-# Bump the pinned helium browser to imputnet's latest release: rewrites `version` +
-# the arch hash in ./helium.nix. helium ships VERSIONED AppImage assets (no
-# version-less URL) and can't build from source, so it can't ride `nix flake update`
-# at the asset level — this script is what moves the pin. It runs unattended in this
-# repo's GitHub Action (.github/workflows/update-helium.yml); you can also run it by
-# hand. Needs curl + jq + nix on PATH.
+# Bump helium.nix to imputnet's latest release (CI runs this daily). Needs curl, jq, nix.
 set -euo pipefail
 
 ROOT="${1:-.}"
