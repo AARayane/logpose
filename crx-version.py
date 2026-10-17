@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-# Print a CRX3's manifest version. Used at build time so an External Extension
-# Descriptor's `external_version` always matches the packaged .crx exactly (chromium
-# refuses the install on a mismatch). CRX3 = "Cr24" + u32 version + u32 header_len +
-# header + zip; the manifest lives in the trailing zip.
+# Print a CRX3's manifest version; external_version must match it or chromium refuses the install.
 import io, json, struct, sys, zipfile
 
 data = open(sys.argv[1], "rb").read()
