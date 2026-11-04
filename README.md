@@ -41,5 +41,15 @@ Update it like any input: `nix flake update logpose` → rebuild. No special-cas
 nix run nixpkgs#bash -- ./update-helium.sh .   # needs curl + jq + nix
 ```
 
-Trust boundary: **imputnet** (the browser vendor). This flake only fetches their
-signed release AppImage and wraps it with `appimageTools`. `x86_64-linux` only.
+Extensions install as External Extension Descriptors (Helium ignores
+`ExtensionInstallForcelist`); each CRX is fetched from the Chrome Web Store and pinned by hash:
+
+```nix
+inputs.logpose.packages.x86_64-linux.helium.override {
+  extensions = [ { id = "<extension id>"; hash = "sha256-…"; } ];  # optional: prodversion
+}
+```
+
+Trust boundary: **imputnet** (the browser vendor) for the AppImage, which is pinned by
+hash and wrapped with `appimageTools`, plus the Chrome Web Store for any `extensions`.
+`x86_64-linux` only.
