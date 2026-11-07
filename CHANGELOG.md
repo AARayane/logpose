@@ -23,5 +23,5 @@ flake/override API, not the bundled Helium version (which each release notes exp
 - `commandLineArgs` override passthrough; `formatter` = `nixpkgs-fmt`.
 - Bundles **Helium 0.13.6.1**.
 
-[Unreleased]: https://github.com/AARayane/logpose/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/AARayane/logpose/releases/tag/v0.1.0
+[Unreleased]: https://gitlab.com/mugiwara-no-ichimi/logpose/-/compare/v0.1.0...main
+[0.1.0]: https://gitlab.com/mugiwara-no-ichimi/logpose/-/tags/v0.1.0

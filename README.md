@@ -14,16 +14,16 @@ Helium ships **versioned** AppImage assets with no version-less "latest" URL and
 can't build from source, so it can't ride `nix flake update` at the asset level.
 Without this repo, a consumer has to carry a bespoke "bump helium" script — the one
 odd input that doesn't update like the rest. `logpose` moves that mechanism here: a
-scheduled GitHub Action (`.github/workflows/update-helium.yml`) runs
-[`update-helium.sh`](./update-helium.sh) daily, validates the build, and commits the
-new pin. This flake's `main` then tracks upstream on its own.
+daily GitLab pipeline schedule (`.gitlab-ci.yml`) runs
+[`update-helium.sh`](./update-helium.sh), validates the build of a new pin, and pushes
+it to the protected `main` with its own deploy key. This flake's `main` then tracks upstream on its own.
 
 ## Use it
 
 ```nix
 # flake.nix
 inputs.logpose = {
-  url = "github:AARayane/logpose";
+  url = "git+ssh://git@gitlab.com/mugiwara-no-ichimi/logpose";
   inputs.nixpkgs.follows = "nixpkgs";   # dedupe: reuse your nixpkgs
 };
 

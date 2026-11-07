@@ -1,0 +1,29 @@
+# The daily helium bump, from a pipeline schedule on main (or "Run pipeline"). main is protected:
+# only the deploy key in LOGPOSE_PUSH_KEY (base64 of the private key) may push it.
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && ($CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web")
+
+update-helium:
+  image: nixos/nix:2.35.4
+  variables:
+    NIX_CONFIG: "experimental-features = nix-command flakes"
+    GITLAB_HOST_KEY: "gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf"
+  script:
+    - nix shell --inputs-from . nixpkgs#bash nixpkgs#curl nixpkgs#jq nixpkgs#gnused -c bash ./update-helium.sh .
+    - |
+      if git diff --quiet -- helium.nix; then
+        echo "no change — already latest"
+        exit 0
+      fi
+    - nix build .#helium --no-link --print-build-logs
+    - ver=$(sed -nE 's/^[[:space:]]*version = "([^"]+)";.*/\1/p' helium.nix | head -1)
+    - git -c user.name=helium-bot -c user.email=noreply@gitlab.com commit -am "helium: auto-bump to ${ver}"
+    - |
+      umask 077
+      k=$(mktemp); kh=$(mktemp)
+      printf '%s' "$LOGPOSE_PUSH_KEY" | base64 -d > "$k"
+      printf '%s\n' "$GITLAB_HOST_KEY" > "$kh"
+      nix shell --inputs-from . nixpkgs#openssh -c env \
+        GIT_SSH_COMMAND="ssh -F /dev/null -i $k -o IdentitiesOnly=yes -o UserKnownHostsFile=$kh -o StrictHostKeyChecking=yes" \
+        git push "git@gitlab.com:${CI_PROJECT_PATH}.git" HEAD:main
