@@ -6,6 +6,10 @@ workflow:
 
 update-helium:
   image: nixos/nix:2.35.4
+  rules:
+    - if: $KEY_CHECK
+      when: never
+    - when: on_success
   variables:
     NIX_CONFIG: "experimental-features = nix-command flakes"
     GITLAB_HOST_KEY: "gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf"
@@ -28,3 +32,20 @@ update-helium:
       printf '%s\n' "$GITLAB_HOST_KEY" > "$kh"
       GIT_SSH_COMMAND="ssh -F /dev/null -i $k -o IdentitiesOnly=yes -o UserKnownHostsFile=$kh -o StrictHostKeyChecking=yes" \
         git push "git@gitlab.com:${CI_PROJECT_PATH}.git" HEAD:main
+
+# A run with KEY_CHECK set only proves the push key opens logpose; it never pushes.
+key-check:
+  image: nixos/nix:2.35.4
+  rules:
+    - if: $KEY_CHECK
+  variables:
+    GITLAB_HOST_KEY: "gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf"
+  script:
+    - |
+      umask 077
+      k=$(mktemp); kh=$(mktemp)
+      printf '%s' "$LOGPOSE_PUSH_KEY" | base64 -d > "$k"
+      printf '%s\n' "$GITLAB_HOST_KEY" > "$kh"
+      export GIT_SSH_COMMAND="ssh -F /dev/null -i $k -o IdentitiesOnly=yes -o UserKnownHostsFile=$kh -o StrictHostKeyChecking=yes"
+      { $GIT_SSH_COMMAND -T git@gitlab.com 2>&1 || true; } | grep "Welcome to GitLab"
+      git ls-remote "git@gitlab.com:${CI_PROJECT_PATH}.git" refs/heads/main
