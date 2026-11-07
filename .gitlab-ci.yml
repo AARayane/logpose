@@ -10,7 +10,8 @@ update-helium:
     NIX_CONFIG: "experimental-features = nix-command flakes"
     GITLAB_HOST_KEY: "gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf"
   script:
-    - nix shell --inputs-from . nixpkgs#bash nixpkgs#curl nixpkgs#jq nixpkgs#gnused -c bash ./update-helium.sh .
+    - nix profile install --inputs-from . nixpkgs#jq nixpkgs#gnused
+    - bash ./update-helium.sh .
     - |
       if git diff --quiet -- helium.nix; then
         echo "no change — already latest"
@@ -25,6 +26,5 @@ update-helium:
       k=$(mktemp); kh=$(mktemp)
       printf '%s' "$LOGPOSE_PUSH_KEY" | base64 -d > "$k"
       printf '%s\n' "$GITLAB_HOST_KEY" > "$kh"
-      nix shell --inputs-from . nixpkgs#openssh -c env \
-        GIT_SSH_COMMAND="ssh -F /dev/null -i $k -o IdentitiesOnly=yes -o UserKnownHostsFile=$kh -o StrictHostKeyChecking=yes" \
+      GIT_SSH_COMMAND="ssh -F /dev/null -i $k -o IdentitiesOnly=yes -o UserKnownHostsFile=$kh -o StrictHostKeyChecking=yes" \
         git push "git@gitlab.com:${CI_PROJECT_PATH}.git" HEAD:main
