@@ -18,7 +18,8 @@ update-helium:
       fi
     - nix build .#helium --no-link --print-build-logs
     - ver=$(sed -nE 's/^[[:space:]]*version = "([^"]+)";.*/\1/p' helium.nix | head -1)
-    - git -c user.name=helium-bot -c user.email=noreply@gitlab.com commit -am "helium: auto-bump to ${ver}"
+    - |
+      git -c user.name=helium-bot -c user.email=noreply@gitlab.com commit -am "helium: auto-bump to ${ver}"
     - |
       umask 077
       k=$(mktemp); kh=$(mktemp)
